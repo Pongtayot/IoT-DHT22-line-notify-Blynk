@@ -1,0 +1,119 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_Sensor.h>
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+#include <DHT.h>
+#define DHTPIN D5
+#define DHTTYPE DHT22
+DHT dht(DHTPIN, DHTTYPE);
+
+//#include <SimpleTimer.h>
+//SimpleTimer timer;
+
+#include <TridentTD_LineNotify.h>
+
+// Fill-in information from your Blynk Template here
+#define BLYNK_TEMPLATE_ID "TMPLkKhSA7xk"
+#define BLYNK_DEVICE_NAME "TestSystem"
+
+#define BLYNK_FIRMWARE_VERSION        "0.1.0"
+
+#define BLYNK_PRINT Serial
+#define APP_DEBUG
+#define USE_NODE_MCU_BOARD
+#include "BlynkEdgent.h"
+//BlynkTimer timer;
+
+#define LINE_TOKEN  "fpQtTlqBKjku8OaCvdjdYHfZagyjAGqagqfLGZjwXsB"   //ใส่ TOKEN
+
+void sendSensor()
+{
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  if (isnan(h) || isnan(t)) {
+    Serial.println("Failed to read from DHT sensor");
+    LINE.notify("Failed to read from DHT sensor");
+    delay(5000);
+    return;
+  }
+  Serial.print("Humidity is : ");
+  Serial.println(h,1);
+  Serial.print("Temperature is : ");
+  Serial.println(t,1);
+
+  Blynk.virtualWrite(V2, h);
+  Blynk.virtualWrite(V1, t);
+  LINE.notify("Humidity is: "+String(h)+" %");
+  LINE.notify("Temperature is: "+String(t)+" C");
+}
+
+
+void OLED()
+{
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;);
+  }
+  delay(2000);
+  display.clearDisplay();
+  display.setTextColor(WHITE);
+  
+  delay(5000);
+  float t = dht.readTemperature();
+  float h = dht.readHumidity();
+  if (isnan(h) || isnan(t)) {
+    Serial.println("Failed to read from DHT sensor!");
+  }
+  // clear display
+  display.clearDisplay();
+  
+  // display temperature
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.print("Temperature: ");
+  display.setTextSize(2);
+  display.setCursor(0,10);
+  display.print(t);
+  display.print(" ");
+  display.setTextSize(1);
+  display.cp437(true);
+  display.write(167);
+  display.setTextSize(2);
+  display.print("C");
+  
+  // display humidity
+  display.setTextSize(1);
+  display.setCursor(0, 35);
+  display.print("Humidity: ");
+  display.setTextSize(2);
+  display.setCursor(0, 45);
+  display.print(h);
+  display.print(" %"); 
+  display.display(); 
+}
+
+
+void setup()
+{
+  Serial.begin(115200);
+  dht.begin();
+  //Line
+  //timer.setInterval(5000, sendSensor);
+  LINE.setToken(LINE_TOKEN);
+  //Line
+  BlynkEdgent.begin();
+}
+
+void loop() {
+  BlynkEdgent.run();
+  sendSensor();
+  delay(2000);
+  OLED();
+}
